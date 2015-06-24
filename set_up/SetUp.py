@@ -61,7 +61,7 @@ class ConnectorSetUp:
             #TODO: Uid type?
             query = """CREATE TABLE IF NOT EXISTS %(kspcName)s.cmpTable (
                         uid varchar,
-                        cmp list<int>,
+                        cmp int,
                         mapped boolean,
                         PRIMARY KEY (uid)
                     );""" % locals()
@@ -78,7 +78,7 @@ class ConnectorSetUp:
         currentCmp = 0
         for uid in uidGenerator:
             kspcName = self.keyspaceNames[self.identifyKspc(uid)]
-            query = "INSERT INTO %(kspcName)s.cmpTable (uid, cmp, mapped) VALUES (\'%(uid)s\', [%(currentCmp)s], false)" % locals()
+            query = "INSERT INTO %(kspcName)s.cmpTable (uid, cmp, mapped) VALUES (\'%(uid)s\', %(currentCmp)s, false)" % locals()
             if currentCmp % 1000 == 0:
                 print query
             #Note, we use asynchronous queries for this.
