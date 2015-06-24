@@ -30,11 +30,12 @@ class EdgeRddBuilder(sc: SparkContext) extends Actor {
 		edges = newEdgeRDD 
 	}
 	private def addEdge(edge: Edge[Nothing]) {
-		Logger("Addig edge: " + edge.toString)
-		val newRdd = EdgeRDD.fromEdges[Nothing, Int](sc.parallelize(List(edge)))
-		edges = EdgeRDD.fromEdges[Nothing, Int](edges.union(newRdd))
+		Logger("Adding edge: " + edge.toString)
+		val newRdd = EdgeRDD.fromEdges[Nothing, Nothing](sc.parallelize(List(edge)))
+		edges = EdgeRDD.fromEdges[Nothing, Nothing](edges.union(newRdd))
 	}
 	private def requestGraph(sender: ActorRef) {
+		//TODO: Is there any way to do fromEdges[Nothing]?
 		val verts = VertexRDD.fromEdges[Int](edges, 1, 0).asInstanceOf[VertexRDD[Nothing]]
 		val graph = GraphImpl.fromExistingRDDs[Nothing, Nothing](verts, edges)
 		sender ! SendGraph(graph)

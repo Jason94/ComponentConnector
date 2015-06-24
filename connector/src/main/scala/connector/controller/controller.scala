@@ -14,6 +14,7 @@ case class ReadFromFile(fname: String) extends ControllerMessage
 case class SendGraph(g: Graph[Nothing, Nothing]) extends ControllerMessage
 case object PrintComps extends 	ControllerMessage
 case object ShutdownController extends ControllerMessage
+case object FinishedWritingCCs extends ControllerMessage
 
 /** An Akka actor that communicates with the Python side of the framework and directs
  *  the GraphX calculations on the Scala side. Uses a TCP/IP socket to communicate with
@@ -93,14 +94,13 @@ class Controller(actSys: ActorSystem, sc: SparkContext, ccWriter: ComponentsWrit
 	private def sentGraph(g: Graph[Nothing, Nothing]) {
 		// Store the graph.
 		graph = Some(g)
-		// If there's an open stream source, write a CCsWritten message back.
-		out match {
-			case Some(writer) => writer.print(CCsWritten.toString)
-			case None => // Do nothing
-		}
+		// Give the ccWriter a reference to our actorRef, so that it can send a 'FinishedWritingCCs'
+		// message back to us.
+		ccWriter.setController(self)
 		// Now dispatch the cc's to the writer to get written to the database or whatever.
 		// TODO: Fix the terrible type casting?
 		ccWriter.writeCCs(graph.get.asInstanceOf[Graph[Int,Int]].connectedComponents.vertices)
+		// Control will resume when the ccWriter sends a 'FinishedWritingCCs' message back to us.
 	}
 	private def printComps {
 		// TODO: Is there a better way to get the CC's of a graph of nothing's? The type casting is too hacky.
@@ -113,7 +113,14 @@ class Controller(actSys: ActorSystem, sc: SparkContext, ccWriter: ComponentsWrit
 		sc.stop
 		streamSource match {
 			case Some(src) => src.close
-			case None => // Do nothing here
+			case None => // Do nothing
+		}
+	}
+	private def sendCcFinishedMessage {
+		// If there's an open stream source, write a CCsWritten message back.
+		out match {
+			case Some(writer) => writer.print(CCsWritten.toString)
+			case None => // Do nothing
 		}
 	}
 	
@@ -123,5 +130,6 @@ class Controller(actSys: ActorSystem, sc: SparkContext, ccWriter: ComponentsWrit
 		case SendGraph(g) => sentGraph(g)
 		case PrintComps => printComps
 		case ShutdownController => shutdown
+		case FinishedWritingCCs => sendCcFinishedMessage
 	}
 }

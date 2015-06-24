@@ -1,13 +1,10 @@
-package connector
+package connector.runners
 
 import org.apache.spark._
 import org.apache.spark.graphx._
 import org.apache.spark.graphx.impl._
-import org.apache.spark.rdd.RDD
 import akka.actor._
-import connector.controller.Controller
-import connector.controller.ReadFromFile
-import connector.controller.CassandraWriter
+import connector.controller.cass_writer._
 
 object MyApp {
   def main(args: Array[String]) {
@@ -43,6 +40,7 @@ object MyApp {
 	
     /// Set up spark ///
 	// Create the spark context
+	  /*
     val conf = new SparkConf()
       .setMaster("local[2]")
     GraphXUtils.registerKryoClasses(conf)
@@ -54,12 +52,14 @@ object MyApp {
     /// Start the problem ///
     val dataFile = "data/followers.txt"
     
-   	val controller = system.actorOf(Props(new Controller(system, sc, new CassandraWriter)), "controller")   
+   	val controller = system.actorOf(Props(new Controller(system, sc, new CassandraWriter(1))), "controller")   
    	
    	controller ! ReadFromFile(dataFile)
    	
    	Thread.sleep(5000)
    	sc.stop()
    	system.shutdown()
+   	* 
+   	*/
   }
 }

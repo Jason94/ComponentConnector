@@ -14,7 +14,10 @@ import org.mockito.Mockito._
 class MockComponentsWriter extends ComponentsWriter {
 	var ccs: Option[VertexRDD[VertexId]] = None
 	
-	def writeCCs(vertices: VertexRDD[VertexId]) = ccs = Some(vertices)
+	def writeCCs(vertices: VertexRDD[VertexId]) = {
+		ccs = Some(vertices)
+		sendFinished
+	}
 }
 
 /** 
