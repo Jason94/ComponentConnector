@@ -4,6 +4,7 @@ import connector.controller._
 import org.apache.spark.graphx.{VertexRDD, VertexId}
 import akka.actor.{ActorSystem, Props}
 
+//TODO: Update this documentation on the constructor.
 /**
  * Write connected component information to a specified Cassandra database.
  * Uses multiple actors running concurrently to scale synchronous writes
@@ -42,5 +43,7 @@ abstract class CassandraWriter(nNodes: Int, nKeyspaces: Int, cassIp: String, key
 		for(i <- 0 until verticesCollected.length) {
 			writers(i % nNodes) ! WriteCc(verticesCollected(i)._1, verticesCollected(i)._2)
 		}				
+		
+		//TODO: Somehow figure out when they're finished
 	}	
 }

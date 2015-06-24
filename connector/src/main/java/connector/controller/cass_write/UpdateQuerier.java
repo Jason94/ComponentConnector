@@ -5,7 +5,9 @@ import com.datastax.driver.core.querybuilder.*;
 
 public class UpdateQuerier {
 	
-	public static void updateQuery(Session session, String kspc, String table, String clmn, String newVal, String id, String matchVal) {
+	public static void updateQuery(
+			Session session, String kspc, String table,
+			String clmn, String newVal, String id, String matchVal) {
 		
 		Statement query = QueryBuilder
 							.update(kspc, table)
