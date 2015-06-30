@@ -6,6 +6,7 @@ import org.apache.spark.graphx._
 import akka.actor._
 import java.net.Socket
 import connector.controller._
+import connector.controller.stream_source._
 import java.io.BufferedReader
 import java.io.PrintWriter
 import org.scalatest.mock.MockitoSugar
@@ -69,7 +70,7 @@ class SansData extends FlatSpec with MustMatchers with MockitoSugar {
 		/// Create the controller & send!
 		val controller = akkaSystem.actorOf(Props(new Controller(akkaSystem, sc, ccWriter)))
 		
-		controller ! StartListening(streamMock)
+		controller ! StartController(streamMock)
 		
 		// Wait a bit, just to make sure...
 		println("waitig for controller...")

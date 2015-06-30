@@ -6,6 +6,7 @@ import org.apache.spark._
 import org.apache.spark.graphx.GraphXUtils
 import akka.actor.{ActorSystem, Props}
 import java.net.Socket
+import connector.controller.stream_source.SocketStreamSource
 
 class IntCodeCassWriter(nNodes: Int, nKeyspaces: Int, cassIp: String) 
 		extends CassandraWriter(nNodes, nKeyspaces, cassIp) {
@@ -33,5 +34,7 @@ object IntCodeRunner extends App {
 	val controller = system.actorOf(
 			Props(new Controller(system, sc, cassWriter)), "int-code-controller")
 			
-	controller ! StartListening(streamSource)
+	val msg = connector.controller.StartController(socket)
+			
+	controller ! msg
 }

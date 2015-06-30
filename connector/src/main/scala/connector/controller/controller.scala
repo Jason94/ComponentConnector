@@ -7,9 +7,13 @@ import scala.io.Source
 import java.net.Socket
 import java.io.{BufferedReader, PrintWriter, InputStreamReader}
 import connector.logger.Logger
+import connector.controller.stream_source.ControllerStreamSource
+import scala.concurrent.stm._
+import connector.controller.stream_source.StartListening
 
-sealed abstract trait ControllerMessage 
-case class StartListening(streamSource: ControllerStreamSource) extends ControllerMessage
+sealed abstract trait ControllerMessage
+case class StartController(streamSource: ControllerStreamSource) extends ControllerMessage
+case class ReceivePyMessage(msg: PyScMessage) extends ControllerMessage
 case class ReadFromFile(fname: String) extends ControllerMessage
 case class SendGraph(g: Graph[Nothing, Nothing]) extends ControllerMessage
 case object PrintComps extends 	ControllerMessage
@@ -30,42 +34,31 @@ class Controller(actSys: ActorSystem, sc: SparkContext, ccWriter: ComponentsWrit
 	private var edgeBuilder = 
 		actSys.actorOf(Props(new EdgeRddBuilder(sc)), "edgebuilder")
 	private var streamSource: Option[ControllerStreamSource] = None
-	private var in: Option[BufferedReader] = None
+	private var inputReceiver: Option[ActorRef] = None
+	private val inputReceiverStore = Ref(false)
 	private var out: Option[PrintWriter] = None
 	
 	private var stopListening = false
 	
-	private def listen() {
-		var inputLine = ""
-		stopListening = false
-		//TODO: Apparently != null does nothing in scala?
-		while((inputLine = in.get.readLine) != null && !stopListening) {
-			// For testing purposes, immediately return if "cTEST_EXIT" is encountered.
-			if(inputLine == "cTEST_EXIT")
-				return
-			
-			// Parse the message.
-			val message = PyScMessage.parse(inputLine)
-			
-			Logger(s"Received: $message")
-			
-			// React.
-			message match {
-				case ListenForEdges => {
-					// Reset the edge builder.
-					edgeBuilder ! Reset
-				} case FinishedMapping => {
-					// Retrieve the graph from the edge builder.
-					// Control will resume when the edgeBuilder sends
-					// "SendGraph" back to us.
-					Logger("sending graph request")
-					edgeBuilder ! RequestGraph
-				} case Shutdown => {
-					stopListening = true
-					self ! ShutdownController
-				} case DataMessage(edges) => {
-					edgeBuilder ! AddEdges(edges)
-				}
+	private def receiveMessage(message: PyScMessage) {
+		Logger(s"Received: $message")
+		
+		// React.
+		message match {
+			case ListenForEdges => {
+				// Reset the edge builder.
+				edgeBuilder ! Reset
+			} case FinishedMapping => {
+				// Retrieve the graph from the edge builder.
+				// Control will resume when the edgeBuilder sends
+				// "SendGraph" back to us.
+				Logger("sending graph request")
+				edgeBuilder ! RequestGraph
+			} case Shutdown => {
+				stopListening = true
+				self ! ShutdownController
+			} case DataMessage(edges) => {
+				edgeBuilder ! AddEdges(edges)
 			}
 		}
 	}
@@ -76,11 +69,12 @@ class Controller(actSys: ActorSystem, sc: SparkContext, ccWriter: ComponentsWrit
 		streamSource = Some(newStreamSource)
 		
 		// Prepare to listen.		
-		in = Some(streamSource.get.inputStream)
+		inputReceiver = Some(actSys.actorOf(
+				Props(streamSource.get.inputStreamFactory(inputReceiverStore, self)), "input-receiver"))
 		out = Some(streamSource.get.outputStream)
 		
 		// Listen
-		listen()
+		inputReceiver.get ! StartListening
 	}
 	private def buildGraphFromFile(fname: String) {
 		val edgeBuilder = actSys.actorOf(Props(new EdgeRddBuilder(sc)), "edgebuilder")
@@ -125,7 +119,7 @@ class Controller(actSys: ActorSystem, sc: SparkContext, ccWriter: ComponentsWrit
 	}
 	
 	def receive = {
-		case StartListening(newStreamSource) => startListening(newStreamSource)
+		case StartController(newStreamSource) => startListening(newStreamSource)
 		case ReadFromFile(fname) => buildGraphFromFile(fname)
 		case SendGraph(g) => sentGraph(g)
 		case PrintComps => printComps

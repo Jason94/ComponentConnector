@@ -6,7 +6,6 @@ import connector.controller.UID
 import com.datastax.driver.core._
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import scala.collection.JavaConversions._
-import connector.controller.cass_write.UpdateQuerier
 
 sealed abstract class WriteActorMessage
 case class OpenSession(ip: String) extends WriteActorMessage
